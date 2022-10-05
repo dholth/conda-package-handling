@@ -1,0 +1,185 @@
+Content-type: text/html
+
+
+<H3>Current Working Directory:</H3>
+/Users/dholth/prog/conda-package-handling
+
+
+<H3>Command Line Arguments:</H3>
+
+['/Users/dholth/prog/conda/devenv/Darwin/arm64/bin/pytest', '--alluredir=./allure-results']
+
+
+<H3>Form Contents:</H3>
+<DL>
+<DT>--alluredir: <i>&lt;class &#x27;cgi.MiniFieldStorage&#x27;&gt;</i>
+<DD>MiniFieldStorage(&#x27;--alluredir&#x27;, &#x27;./allure-results&#x27;)
+</DL>
+
+
+<H3>Shell Environment:</H3>
+<DL>
+<DT> COLORTERM <DD> truecolor
+<DT> COMMAND_MODE <DD> unix2003
+<DT> CONDA_DEFAULT_ENV <DD> /Users/dholth/prog/conda/devenv/Darwin/arm64
+<DT> CONDA_EXE <DD> /Users/dholth/miniconda3/bin/conda
+<DT> CONDA_PREFIX <DD> /Users/dholth/prog/conda/devenv/Darwin/arm64
+<DT> CONDA_PREFIX_1 <DD> /Users/dholth/miniconda3
+<DT> CONDA_PROMPT_MODIFIER <DD> (/Users/dholth/prog/conda/devenv/Darwin/arm64) 
+<DT> CONDA_PYTHON_EXE <DD> /Users/dholth/miniconda3/bin/python
+<DT> CONDA_SHLVL <DD> 2
+<DT> CONDA_SUBDIR <DD> osx-arm64
+<DT> HOME <DD> /Users/dholth
+<DT> HOMEBREW_CELLAR <DD> /opt/homebrew/Cellar
+<DT> HOMEBREW_PREFIX <DD> /opt/homebrew
+<DT> HOMEBREW_REPOSITORY <DD> /opt/homebrew
+<DT> INFOPATH <DD> /opt/homebrew/share/info:
+<DT> LANG <DD> en_US.UTF-8
+<DT> LOGNAME <DD> dholth
+<DT> MANPATH <DD> /opt/homebrew/share/man::
+<DT> OLDPWD <DD> /Users/dholth/prog/conda-package-streaming
+<DT> PATH <DD> /Users/dholth/.local/bin:/Users/dholth/prog/conda/devenv/Darwin/arm64/bin:/Users/dholth/miniconda3/condabin:/Library/Frameworks/Python.framework/Versions/3.10/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/dholth/.cargo/bin
+<DT> PWD <DD> /Users/dholth/prog/conda-package-handling
+<DT> PYTEST_CURRENT_TEST <DD> tests/test_api.py::test (call)
+<DT> SHELL <DD> /bin/zsh
+<DT> SHLVL <DD> 1
+<DT> SSH_AUTH_SOCK <DD> /private/tmp/com.apple.launchd.mNQyN0IBlh/Listeners
+<DT> TERM <DD> xterm-256color
+<DT> TERM_PROGRAM <DD> WezTerm
+<DT> TERM_PROGRAM_VERSION <DD> 20220905-102802-7d4b8249
+<DT> TMPDIR <DD> /var/folders/33/mxqrq8qx1v91zcz7mb5qxf5h0000gp/T/
+<DT> USER <DD> dholth
+<DT> WEZTERM_CONFIG_DIR <DD> /Users/dholth
+<DT> WEZTERM_CONFIG_FILE <DD> /Users/dholth/.wezterm.lua
+<DT> WEZTERM_EXECUTABLE <DD> /Applications/WezTerm.app/Contents/MacOS/wezterm-gui
+<DT> WEZTERM_EXECUTABLE_DIR <DD> /Applications/WezTerm.app/Contents/MacOS
+<DT> WEZTERM_PANE <DD> 0
+<DT> WEZTERM_UNIX_SOCKET <DD> /Users/dholth/.local/share/wezterm/gui-sock-59540
+<DT> XPC_FLAGS <DD> 0x0
+<DT> XPC_SERVICE_NAME <DD> 0
+<DT> _ <DD> /Users/dholth/prog/conda/devenv/Darwin/arm64/bin/pytest
+<DT> _CE_CONDA <DD> 
+<DT> _CE_M <DD> 
+<DT> __CFBundleIdentifier <DD> com.github.wez.wezterm
+<DT> __CF_USER_TEXT_ENCODING <DD> 0x1F6:0x0:0x0
+</DL>
+
+
+<H3>These environment variables could have been set:</H3>
+<UL>
+<LI>AUTH_TYPE
+<LI>CONTENT_LENGTH
+<LI>CONTENT_TYPE
+<LI>DATE_GMT
+<LI>DATE_LOCAL
+<LI>DOCUMENT_NAME
+<LI>DOCUMENT_ROOT
+<LI>DOCUMENT_URI
+<LI>GATEWAY_INTERFACE
+<LI>LAST_MODIFIED
+<LI>PATH
+<LI>PATH_INFO
+<LI>PATH_TRANSLATED
+<LI>QUERY_STRING
+<LI>REMOTE_ADDR
+<LI>REMOTE_HOST
+<LI>REMOTE_IDENT
+<LI>REMOTE_USER
+<LI>REQUEST_METHOD
+<LI>SCRIPT_NAME
+<LI>SERVER_NAME
+<LI>SERVER_PORT
+<LI>SERVER_PROTOCOL
+<LI>SERVER_ROOT
+<LI>SERVER_SOFTWARE
+</UL>
+In addition, HTTP headers sent by the server may be passed in the
+environment as well.  Here are some common variable names:
+<UL>
+<LI>HTTP_ACCEPT
+<LI>HTTP_CONNECTION
+<LI>HTTP_HOST
+<LI>HTTP_PRAGMA
+<LI>HTTP_REFERER
+<LI>HTTP_USER_AGENT
+</UL>
+
+<H3>What follows is a test, not an actual exception:</H3>
+
+<H3>Traceback (most recent call last):</H3>
+<PRE>  File &quot;/Users/dholth/prog/conda/devenv/Darwin/arm64/lib/python3.9/cgi.py&quot;, line 864, in test
+    g()
+  File &quot;/Users/dholth/prog/conda/devenv/Darwin/arm64/lib/python3.9/cgi.py&quot;, line 862, in g
+    f()
+  File &quot;/Users/dholth/prog/conda/devenv/Darwin/arm64/lib/python3.9/cgi.py&quot;, line 860, in f
+    exec(&quot;testing print_exception() -- &lt;I&gt;italics?&lt;/I&gt;&quot;)
+  File &quot;&lt;string&gt;&quot;, line 1
+    testing print_exception() -- &lt;I&gt;italics?&lt;/I&gt;
+            ^
+<B>SyntaxError: invalid syntax
+</B></PRE>
+<H1>Second try with a small maxlen...</H1>
+
+<H3>Current Working Directory:</H3>
+/Users/dholth/prog/conda-package-handling
+
+
+<H3>Command Line Arguments:</H3>
+
+['/Users/dholth/prog/conda/devenv/Darwin/arm64/bin/pytest', '--alluredir=./allure-results']
+
+
+<H3>Form Contents:</H3>
+<DL>
+<DT>--alluredir: <i>&lt;class &#x27;cgi.MiniFieldStorage&#x27;&gt;</i>
+<DD>MiniFieldStorage(&#x27;--alluredir&#x27;, &#x27;./allure-results&#x27;)
+</DL>
+
+
+<H3>Shell Environment:</H3>
+<DL>
+<DT> COLORTERM <DD> truecolor
+<DT> COMMAND_MODE <DD> unix2003
+<DT> CONDA_DEFAULT_ENV <DD> /Users/dholth/prog/conda/devenv/Darwin/arm64
+<DT> CONDA_EXE <DD> /Users/dholth/miniconda3/bin/conda
+<DT> CONDA_PREFIX <DD> /Users/dholth/prog/conda/devenv/Darwin/arm64
+<DT> CONDA_PREFIX_1 <DD> /Users/dholth/miniconda3
+<DT> CONDA_PROMPT_MODIFIER <DD> (/Users/dholth/prog/conda/devenv/Darwin/arm64) 
+<DT> CONDA_PYTHON_EXE <DD> /Users/dholth/miniconda3/bin/python
+<DT> CONDA_SHLVL <DD> 2
+<DT> CONDA_SUBDIR <DD> osx-arm64
+<DT> HOME <DD> /Users/dholth
+<DT> HOMEBREW_CELLAR <DD> /opt/homebrew/Cellar
+<DT> HOMEBREW_PREFIX <DD> /opt/homebrew
+<DT> HOMEBREW_REPOSITORY <DD> /opt/homebrew
+<DT> INFOPATH <DD> /opt/homebrew/share/info:
+<DT> LANG <DD> en_US.UTF-8
+<DT> LOGNAME <DD> dholth
+<DT> MANPATH <DD> /opt/homebrew/share/man::
+<DT> OLDPWD <DD> /Users/dholth/prog/conda-package-streaming
+<DT> PATH <DD> /Users/dholth/.local/bin:/Users/dholth/prog/conda/devenv/Darwin/arm64/bin:/Users/dholth/miniconda3/condabin:/Library/Frameworks/Python.framework/Versions/3.10/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/dholth/.cargo/bin
+<DT> PWD <DD> /Users/dholth/prog/conda-package-handling
+<DT> PYTEST_CURRENT_TEST <DD> tests/test_api.py::test (call)
+<DT> SHELL <DD> /bin/zsh
+<DT> SHLVL <DD> 1
+<DT> SSH_AUTH_SOCK <DD> /private/tmp/com.apple.launchd.mNQyN0IBlh/Listeners
+<DT> TERM <DD> xterm-256color
+<DT> TERM_PROGRAM <DD> WezTerm
+<DT> TERM_PROGRAM_VERSION <DD> 20220905-102802-7d4b8249
+<DT> TMPDIR <DD> /var/folders/33/mxqrq8qx1v91zcz7mb5qxf5h0000gp/T/
+<DT> USER <DD> dholth
+<DT> WEZTERM_CONFIG_DIR <DD> /Users/dholth
+<DT> WEZTERM_CONFIG_FILE <DD> /Users/dholth/.wezterm.lua
+<DT> WEZTERM_EXECUTABLE <DD> /Applications/WezTerm.app/Contents/MacOS/wezterm-gui
+<DT> WEZTERM_EXECUTABLE_DIR <DD> /Applications/WezTerm.app/Contents/MacOS
+<DT> WEZTERM_PANE <DD> 0
+<DT> WEZTERM_UNIX_SOCKET <DD> /Users/dholth/.local/share/wezterm/gui-sock-59540
+<DT> XPC_FLAGS <DD> 0x0
+<DT> XPC_SERVICE_NAME <DD> 0
+<DT> _ <DD> /Users/dholth/prog/conda/devenv/Darwin/arm64/bin/pytest
+<DT> _CE_CONDA <DD> 
+<DT> _CE_M <DD> 
+<DT> __CFBundleIdentifier <DD> com.github.wez.wezterm
+<DT> __CF_USER_TEXT_ENCODING <DD> 0x1F6:0x0:0x0
+</DL>
+
