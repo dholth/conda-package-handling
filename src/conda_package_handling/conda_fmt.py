@@ -3,37 +3,22 @@ https://anaconda.atlassian.net/wiki/spaces/AD/pages/90210540/Conda+package+forma
 
 import json
 import os
-from tempfile import NamedTemporaryFile
-from zipfile import ZIP_STORED, BadZipFile, ZipFile
+import tarfile
+from zipfile import ZIP_STORED, ZipFile
+
+import zstandard
 
 from . import utils
-from .exceptions import InvalidArchiveError
 from .interface import AbstractBaseFormat
-from .tarball import _tar_xf, create_compressed_tarball
+from .streaming import _extract
 
 CONDA_PACKAGE_FORMAT_VERSION = 2
 DEFAULT_COMPRESSION_TUPLE = (".tar.zst", "zstd", "zstd:compression-level=22")
 
-
-def _lookup_component_filename(zf, file_id, component_name):
-    contents = zf.namelist()
-    component_filename_without_ext = "-".join((component_name, file_id))
-    component_filename = [_ for _ in contents if _.startswith(component_filename_without_ext)]
-    return component_filename
-
-
-def _extract_component(fn, file_id, component_name, dest_dir):
-    try:
-        with ZipFile(fn, compression=ZIP_STORED) as zf:
-            with utils.TemporaryDirectory(dir=dest_dir) as tmpdir:
-                component_filename = _lookup_component_filename(zf, file_id, component_name)
-                if not component_filename:
-                    raise RuntimeError("didn't find {} component in {}".format(component_name, fn))
-                component_filename = component_filename[0]
-                zf.extract(component_filename, tmpdir)
-                _tar_xf(os.path.join(tmpdir, component_filename), dest_dir)
-    except BadZipFile as e:
-        raise InvalidArchiveError(fn, str(e))
+# increase to reduce speed and increase compression (22 = conda's default)
+ZSTD_COMPRESS_LEVEL = 22
+# increase to reduce compression (slightly) and increase speed
+ZSTD_COMPRESS_THREADS = 1
 
 
 class CondaFormat_v2(AbstractBaseFormat):
@@ -47,47 +32,69 @@ class CondaFormat_v2(AbstractBaseFormat):
     @staticmethod
     def extract(fn, dest_dir, **kw):
         components = utils.ensure_list(kw.get("components")) or ("info", "pkg")
-        file_id = os.path.basename(fn).replace(".conda", "")
         if not os.path.isabs(fn):
             fn = os.path.normpath(os.path.join(os.getcwd(), fn))
         if not os.path.isdir(dest_dir):
             os.makedirs(dest_dir)
-        for component in components:
-            _extract_component(fn, file_id, component, dest_dir)
+
+        _extract(str(fn), str(dest_dir), components=components)
 
     @staticmethod
     def extract_info(fn, dest_dir=None):
         return CondaFormat_v2.extract(fn, dest_dir, components=["info"])
 
     @staticmethod
-    def create(prefix, file_list, out_fn, out_folder=os.getcwd(), **kw):
+    def create(
+        prefix,
+        file_list,
+        out_fn,
+        out_folder=os.getcwd(),
+        compressor=lambda: zstandard.ZstdCompressor(
+            level=ZSTD_COMPRESS_LEVEL, threads=ZSTD_COMPRESS_THREADS
+        ),
+        **kw,
+    ):
         if os.path.isabs(out_fn):
             out_folder = os.path.dirname(out_fn)
             out_fn = os.path.basename(out_fn)
         conda_pkg_fn = os.path.join(out_folder, out_fn)
-        out_fn = out_fn.replace(".conda", "")
+        file_id = out_fn = out_fn.replace(".conda", "")
         pkg_files = utils.filter_info_files(file_list, prefix)
         info_files = set(file_list) - set(pkg_files)
-        ext, comp_filter, filter_opts = kw.get("compression_tuple") or DEFAULT_COMPRESSION_TUPLE
 
-        with utils.TemporaryDirectory(dir=out_folder) as tmpdir:
-            info_tarball = create_compressed_tarball(
-                prefix, info_files, tmpdir, "info-" + out_fn, ext, comp_filter, filter_opts
+        # legacy libarchive-ish compatibility
+        ext, comp_filter, filter_opts = compression_tuple = kw.get(
+            "compression_tuple", (None, None, None)
+        )
+        if filter_opts and filter_opts.startswith("zstd:compression-level="):
+            compressor = lambda: zstandard.ZstdCompressor(
+                level=int(filter_opts.split("=", 1)[-1]),
+                threads=ZSTD_COMPRESS_THREADS,
             )
-            pkg_tarball = create_compressed_tarball(
-                prefix, pkg_files, tmpdir, "pkg-" + out_fn, ext, comp_filter, filter_opts
-            )
+
+        with ZipFile(conda_pkg_fn, "w", compression=ZIP_STORED) as conda_file, utils.tmp_chdir(
+            prefix
+        ):
 
             pkg_metadata = {"conda_pkg_format_version": CONDA_PACKAGE_FORMAT_VERSION}
+            conda_file.writestr("metadata.json", json.dumps(pkg_metadata))
 
-            with ZipFile(conda_pkg_fn, "w", compression=ZIP_STORED) as zf:
-                with NamedTemporaryFile(mode="w", delete=False) as tf:
-                    json.dump(pkg_metadata, tf)
-                    tf.flush()
-                    zf.write(tf.name, "metadata.json")
-                for pkg in (info_tarball, pkg_tarball):
-                    zf.write(pkg, os.path.basename(pkg))
-                utils.rm_rf(tf.name)
+            # put the info last, for parity with updated transmute.
+            for component, files in (f"pkg-{file_id}.tar.zst", pkg_files), (
+                f"info-{file_id}.tar.zst",
+                info_files,
+            ):
+                compress = compressor()
+                with conda_file.open(component, "w") as component_file:
+                    component_stream = compress.stream_writer(component_file, closefd=False)
+                    component_tar = tarfile.TarFile(fileobj=component_stream, mode="w")
+
+                    for file in files:
+                        component_tar.add(file, filter=utils.anonymize_tarinfo)
+
+                    component_tar.close()
+                    component_stream.close()
+
         return conda_pkg_fn
 
     @staticmethod

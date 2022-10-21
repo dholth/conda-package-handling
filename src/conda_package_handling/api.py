@@ -1,21 +1,37 @@
+from __future__ import annotations
+
 import functools as _functools
 import os as _os
-import tempfile as _tempfile
+import warnings as _warnings
 from glob import glob as _glob
+from typing import Any
 
 import tqdm as _tqdm
 
-from .conda_fmt import CondaFormat_v2 as _CondaFormat_v2
-
 # expose these two exceptions as part of the API.  Everything else should feed into these.
 from .exceptions import ConversionError, InvalidArchiveError  # NOQA
-from .tarball import CondaTarBZ2 as _CondaTarBZ2  # NOQA
-from .tarball import libarchive_enabled
+from .tarball import CondaTarBZ2 as _CondaTarBZ2
 from .utils import TemporaryDirectory as _TemporaryDirectory
 from .utils import get_executor as _get_executor
 from .utils import rm_rf as _rm_rf
 
-SUPPORTED_EXTENSIONS = {".tar.bz2": _CondaTarBZ2, ".conda": _CondaFormat_v2}
+# type checker thinks _CondaTarBZ2 is an ABC and not an AbstractFormat?
+SUPPORTED_EXTENSIONS: dict[str, Any] = {".tar.bz2": _CondaTarBZ2}
+
+libarchive_enabled = False  #: Old API meaning "can extract .conda" (now without libarchive)
+
+try:
+    from .conda_fmt import ZSTD_COMPRESS_LEVEL, ZSTD_COMPRESS_THREADS
+    from .conda_fmt import CondaFormat_v2 as _CondaFormat_v2
+
+    SUPPORTED_EXTENSIONS[".conda"] = _CondaFormat_v2
+
+    libarchive_enabled = True
+
+except ImportError:
+    _warnings.warn("Install zstandard Python bindings for .conda support")
+
+THREADSAFE_EXTRACT = True  #: Not present in conda-package-handling<2.0.
 
 
 def _collect_paths(prefix):
@@ -52,7 +68,8 @@ def extract(fn, dest_dir=None, components=None, prefix=None):
             dest_dir = _os.path.normpath(_os.path.join(prefix or _os.getcwd(), dest_dir))
     else:
         dest_dir = _os.path.join(
-            prefix or _os.path.dirname(fn), get_default_extracted_folder(fn, abspath=False)
+            prefix or _os.path.dirname(fn),
+            get_default_extracted_folder(fn, abspath=False),
         )
 
     if not _os.path.isdir(dest_dir):
@@ -73,9 +90,14 @@ def extract(fn, dest_dir=None, components=None, prefix=None):
 def create(prefix, file_list, out_fn, out_folder=None, **kw):
     if not out_folder:
         out_folder = _os.getcwd()
+
+    # simplify arguments to format.create()
+    if _os.path.isabs(out_fn):
+        out_folder = _os.path.dirname(out_fn)
+        out_fn = _os.path.basename(out_fn)
+
     if file_list is None:
         file_list = _collect_paths(prefix)
-
     elif isinstance(file_list, str):
         try:
             with open(file_list) as f:
@@ -90,10 +112,11 @@ def create(prefix, file_list, out_fn, out_folder=None, **kw):
             try:
                 out = format.create(prefix, file_list, out_fn, out_folder, **kw)
                 break
-            except Exception as err:
+            except BaseException as err:
                 # don't leave broken files around
-                if out and _os.path.isfile(out):
-                    _rm_rf(out)
+                abs_out_fn = _os.path.join(out_folder, out_fn)
+                if _os.path.isfile(abs_out_fn):
+                    _rm_rf(abs_out_fn)
                 raise err
     else:
         raise ValueError(
@@ -106,8 +129,15 @@ def create(prefix, file_list, out_fn, out_folder=None, **kw):
 
 
 def _convert(fn, out_ext, out_folder, **kw):
+    # allow package to work in degraded mode when zstandard is not available
+    import conda_package_streaming.transmute
+    import zstandard
+
     basename = get_default_extracted_folder(fn, abspath=False)
-    from .validate import validate_converted_files_match
+    from .validate import (
+        validate_converted_files_match,
+        validate_converted_files_match_streaming,
+    )
 
     if not basename:
         print(
@@ -115,20 +145,46 @@ def _convert(fn, out_ext, out_folder, **kw):
             % (fn, SUPPORTED_EXTENSIONS)
         )
         return
-    out_fn = _os.path.join(out_folder, basename + out_ext)
+    out_fn = str(_os.path.join(out_folder, basename + out_ext))
     errors = ""
     if not _os.path.lexists(out_fn) or ("force" in kw and kw["force"]):
-        with _TemporaryDirectory(dir=out_folder) as tmp:
+        if out_ext == ".conda":
+            # streaming transmute, not extracted to the filesystem
+            compressor_args = dict(
+                level=kw.get("zstd_compress_level", ZSTD_COMPRESS_LEVEL),
+                threads=kw.get("zstd_compress_threads", ZSTD_COMPRESS_THREADS),
+            )
+            compressor = lambda: zstandard.ZstdCompressor(**compressor_args)
             try:
-                extract(fn, dest_dir=tmp)
-                file_list = _collect_paths(tmp)
-
-                create(tmp, file_list, _os.path.basename(out_fn), out_folder=out_folder, **kw)
-                _, missing_files, mismatching_sizes = validate_converted_files_match(tmp, out_fn)
+                conda_package_streaming.transmute.transmute(fn, out_folder, compressor=compressor)
+                (
+                    _,
+                    missing_files,
+                    mismatching_sizes,
+                ) = validate_converted_files_match_streaming(out_fn, fn)
                 if missing_files or mismatching_sizes:
                     errors = str(ConversionError(missing_files, mismatching_sizes))
-            except Exception as e:
-                errors = str(e)
+            except BaseException:
+                # don't leave partial `.conda` around
+                if _os.path.isfile(out_fn):
+                    _rm_rf(out_fn)
+                raise
+        else:
+            with _TemporaryDirectory(dir=out_folder) as tmp:
+                try:
+                    extract(fn, dest_dir=tmp)
+                    file_list = _collect_paths(tmp)
+
+                    create(tmp, file_list, _os.path.basename(out_fn), out_folder=out_folder, **kw)
+                    (
+                        _,
+                        missing_files,
+                        mismatching_sizes,
+                    ) = validate_converted_files_match(tmp, out_fn)
+                    if missing_files or mismatching_sizes:
+                        errors = str(ConversionError(missing_files, mismatching_sizes))
+                except Exception as e:
+                    errors = str(e)
     return fn, out_fn, errors
 
 
@@ -155,38 +211,6 @@ def transmute(in_file, out_ext, out_folder=None, processes=1, **kw):
     return failed_files
 
 
-def verify_conversion(
-    glob_pattern, target_dir, reference_ext, tmpdir_root=_tempfile.gettempdir(), processes=None
-):
-    from .validate import validate_converted_files_match
-
-    if not glob_pattern.endswith(reference_ext):
-        glob_pattern = glob_pattern + reference_ext
-    file_sets_by_ext = {
-        ext: _glob(_os.path.join(target_dir, glob_pattern + ext)) for ext in SUPPORTED_EXTENSIONS
-    }
-    matches = {path.replace(ext, "") for ext, path in file_sets_by_ext[reference_ext]}
-    for ext, paths in file_sets_by_ext.items():
-        if ext == reference_ext:
-            continue
-        matches &= {path.replace(ext, "") for ext, path in paths}
-    other_exts = set(SUPPORTED_EXTENSIONS) - {reference_ext}
-
-    errors = {}
-    with _tqdm.tqdm(total=(len(matches) * len(SUPPORTED_EXTENSIONS) - 1), leave=False) as t:
-        with _Executor(max_workers=processes) as executor:
-            for other_ext in other_exts:
-                verify_fn = lambda fn: validate_converted_files_match(
-                    ref_ext=reference_ext, subject=fn + other_ext
-                )
-                for fn, missing, mismatching in executor.map(verify_fn, matches):
-                    t.set_description("Validating %s" % fn)
-                    t.update()
-                    if missing or mismatching:
-                        errors[fn] = str(ConversionError(missing, mismatching))
-    return errors
-
-
 def get_pkg_details(in_file):
     """For the new pkg format, we return the size and hashes of the inner pkg part of the file"""
     for format in SUPPORTED_EXTENSIONS.values():
@@ -194,5 +218,5 @@ def get_pkg_details(in_file):
             details = format.get_pkg_details(in_file)
             break
     else:
-        raise ValueError("Don't know what to do with file {}".format(in_file))
+        raise ValueError(f"Don't know what to do with file {in_file}")
     return details

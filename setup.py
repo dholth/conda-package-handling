@@ -1,31 +1,20 @@
-import sys
+import pathlib
+import re
 
-from Cython.Build import cythonize
 from setuptools import find_packages, setup
-from setuptools.extension import Extension
 
-import versioneer
-
-_libraries = ["archive_and_deps"]
-if sys.platform == "win32":
-    _libraries.append("advapi32")
-    _libraries.append("user32")
-archive_utils_cy_extension = Extension(
-    name="conda_package_handling.archive_utils_cy",
-    sources=["src/conda_package_handling/archive_utils_cy.pyx"],
-    libraries=_libraries,
-)
-
+version = re.search(
+    r'__version__\s+=\s+"(.*)"',
+    pathlib.Path("src/conda_package_handling/__init__.py").read_text(),
+)[1]
 
 setup(
     name="conda-package-handling",
-    version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
+    version=version,
     description="Create and extract conda packages of various formats",
     author="Anaconda, Inc.",
     author_email="conda@anaconda.com",
     url="https://github.com/conda/conda-package-handling",
-    ext_modules=cythonize([archive_utils_cy_extension]),
     packages=find_packages("src", exclude=["tests"]),
     package_dir={"": "src"},
     entry_points={"console_scripts": ["cph=conda_package_handling.cli:main"]},
@@ -35,4 +24,10 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
     ],
+    python_requires=">=3.7",
+    install_requires=["conda-package-streaming >= 0.5.0", "tqdm"],
+    extras_require={
+        "docs": ["furo", "sphinx", "myst-parser", "mdit-py-plugins>=0.3.0"],
+        "test": ["mock", "pytest", "pytest-cov", "pytest-mock"],
+    },
 )
