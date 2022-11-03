@@ -1,0 +1,162 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}, Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest] # , windows-latest] skip for speed
+        python-version: [3.7, 3.8, 3.9]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Cache conda
+        uses: actions/cache@v3
+        env:
+          # Increase this value to reset cache if etc/example-environment.yml has not changed
+          CACHE_NUMBER: 0
+        with:
+          path: ~/conda_pkgs_dir
+          key:
+            ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{
+            hashFiles('conda.recipe/meta.yaml') }}
+
+      # # can we cache twice
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          # not correct on Windows
+          path: ~/.cache/pip
+          key:
+            ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{
+            hashFiles('setup.py') }}
+
+      - name: Additional info about the build
+        shell: bash
+        run: |
+          uname -a
+          df -h
+          ulimit -a
+
+      # More info on options: https://github.com/conda-incubator/setup-miniconda
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          environment-file: devtools/conda-envs/test_env.yaml
+
+          channels: defaults
+
+          activate-environment: test_env
+          auto-update-conda: false
+          auto-activate-base: false
+          show-channel-urls: true
+
+      - name: Install and test package
+
+        # conda setup requires this special shell
+        shell: bash -l {0}
+        run: |
+          conda build -c conda conda.recipe --no-test --output-folder build
+
+          # or .conda? from build/subdir/package-name.extension
+          conda install build/*/conda-package-handling-*.tar.bz2
+
+          # it doesn't find conda-package-handling[test] if we split this into a
+          # separate step?
+          python -m pip install allure-pytest conda-package-handling[test]
+          pytest --alluredir=allure-results
+          tar -zcf allure-results.tar.gz allure-results
+
+      - name: Upload allure-results
+        uses: actions/upload-artifact@v2
+        with:
+          name: allure-${{ matrix.python-version }}_${{ matrix.os }}
+          path: allure-results.tar.gz
+
+  call-workflow-passing-data:
+    uses: dholth/allure-multi/.github/workflows/test-report.yml@main
+    with:
+      repository: dholth/conda-package-handling
+      run: "12345"
+    secrets: inherit
+
+  allure-report:
+    needs: [test]
+    runs-on: ubuntu-latest
+
+    # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Download test results
+        uses: actions/download-artifact@v3
+        with:
+          path: allure-results
+
+# the artifacts will be in folders per artifact name.
+#
+# download-artifact@v3 doesn't know how to download "just the allure results"
+#
+# Run ls -R allure-results
+# allure-results:
+# allure-3.7_ubuntu-latest
+# allure-results
+
+# allure-results/allure-3.7_ubuntu-latest:
+# allure-results.tar.gz
+
+      - name: Unpack test results
+        working-directory: allure-results
+        run: |
+          # strip the existing allure-results/ embedded in the .tar.gz
+          find -name allure-\*.tar.gz -exec tar -xf {} --strip-components=1 \;
+
+      - name: List test results
+        run: ls -R allure-results
+
+      - name: Setup allure report
+        uses: simple-elf/allure-report-action@master
+        if: always()
+        id: allure-report
+        with:
+          allure_results: allure-results
+          gh_pages: gh-pages
+          # XXX use variables
+          allure_report: allure-report
+          allure_history: allure-history
+          keep_reports: 20
+
+      - name: Upload history
+        uses: actions/upload-artifact@v2
+        with:
+          name: allure-history
+          path: allure-history
+
+      - name: Upload report
+        uses: actions/upload-artifact@v2
+        with:
+          name: allure-report
+          path: allure-report
+
+      - name: Post the link to the report
+        if: always()
+        uses: Sibz/github-status-action@v1
+        with:
+            authToken: ${{secrets.GITHUB_TOKEN}}
+            context: 'Test report'
+            state: 'success'
+            sha: ${{ github.event.pull_request.head.sha }}
+            target_url: dholth.github.io/conda-package-handling/${{ github.run_number }}
