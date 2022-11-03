@@ -83,13 +83,6 @@ jobs:
           name: allure-${{ matrix.python-version }}_${{ matrix.os }}
           path: allure-results.tar.gz
 
-  call-workflow-passing-data:
-    uses: dholth/allure-multi/.github/workflows/test-report.yml@main
-    with:
-      repository: dholth/conda-package-handling
-      run: "12345"
-    secrets: inherit
-
   allure-report:
     needs: [test]
     runs-on: ubuntu-latest
@@ -151,12 +144,9 @@ jobs:
           name: allure-report
           path: allure-report
 
-      - name: Post the link to the report
-        if: always()
-        uses: Sibz/github-status-action@v1
+      - name: call-workflow-passing-data
+        uses: dholth/allure-multi/.github/workflows/test-report.yml@main
         with:
-            authToken: ${{secrets.GITHUB_TOKEN}}
-            context: 'Test report'
-            state: 'success'
-            sha: ${{ github.event.pull_request.head.sha }}
-            target_url: dholth.github.io/conda-package-handling/${{ github.run_number }}
+          repository: dholth/conda-package-handling
+          run: "12345"
+        secrets: inherit
