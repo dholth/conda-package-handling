@@ -83,6 +83,15 @@ jobs:
           name: allure-${{ matrix.python-version }}_${{ matrix.os }}
           path: allure-results.tar.gz
 
+  call-workflow-passing-data:
+    needs: [test]
+    runs-on: ubuntu-latest
+    uses: dholth/allure-multi/.github/workflows/test-report.yml@main
+    with:
+      repository: dholth/conda-package-handling
+      run: "12345"
+    secrets: inherit
+
   allure-report:
     needs: [test]
     runs-on: ubuntu-latest
@@ -143,10 +152,3 @@ jobs:
         with:
           name: allure-report
           path: allure-report
-
-      - name: call-workflow-passing-data
-        uses: dholth/allure-multi/.github/workflows/test-report.yml@main
-        with:
-          repository: dholth/conda-package-handling
-          run: "12345"
-        secrets: inherit
